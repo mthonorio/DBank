@@ -22,6 +22,11 @@ class User(AbstractUser):
         verbose_name='user permissions'
     )
 
+    class Meta:
+        verbose_name = 'User'
+        verbose_name_plural = 'Users'
+        ordering = ['id']
+
 # Account bank model
 class Account(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="accounts")

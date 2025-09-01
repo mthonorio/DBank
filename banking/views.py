@@ -1,9 +1,14 @@
-from rest_framework import generics, status
+from rest_framework import generics, status, viewsets, mixins
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.generics import get_object_or_404
+from rest_framework.decorators import action
+
 from .models import User, Account, Transaction, Transfer
 from .serializers import UserSerializer, AccountSerializer, TransactionSerializer, TransferSerializer
-from rest_framework.permissions import IsAuthenticated
+
+# =============================== API V1 ===============================
 
 class UsersAPIView(generics.ListCreateAPIView):
     queryset = User.objects.all()
@@ -41,24 +46,65 @@ class TransfersAPIView(generics.ListCreateAPIView):
     serializer_class = TransferSerializer
     permission_classes = [IsAuthenticated]
 
-class TransferAPIView(APIView):
+class TransferAPIView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Transfer.objects.all()
+    serializer_class = TransferSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self):
+      if self.kwargs.get('user_pk'):
+        return get_object_or_404(self.get_queryset(), user_pk=self.kwargs['user_pk'], pk=self.kwargs.get('transfer_pk'))
+      return get_object_or_404(self.get_queryset(), pk=self.kwargs.get('transfer_pk'))
+
+  
+class MyAccountAPIView(APIView):
   permission_classes = [IsAuthenticated]
 
   def get(self, request):
-    user_accounts = Account.objects.filter(user=request.user)
-    transfers = Transfer.objects.filter(
-      sender__in=user_accounts
-    ) | Transfer.objects.filter(
-      receiver__in=user_accounts
-    )
+    account = Account.objects.filter(user=request.user).first()
+    if not account:
+      return Response({'detail': 'Conta não encontrada.'}, status=status.HTTP_404_NOT_FOUND)
+    serializer = AccountSerializer(account)
+    return Response(serializer.data)
+  
+# =============================== API V2 ===============================
+
+class UserViewSet(viewsets.ModelViewSet):
+  queryset = User.objects.all()
+  serializer_class = UserSerializer
+  permission_classes = [IsAuthenticated]
+
+  @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
+  def accounts(self, request, pk=None):
+    user = self.get_object() # Get the user specified by pk # if all users will use self.queryset
+    accounts = Account.objects.filter(user=user)
+    serializer = AccountSerializer(accounts, many=True)
+    return Response(serializer.data)
+
+class AccountViewSet(viewsets.ModelViewSet):
+  queryset = Account.objects.all()
+  serializer_class = AccountSerializer
+  permission_classes = [IsAuthenticated]
+
+  @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
+  def transactions(self, request, pk=None):
+    account = self.get_object() # Get the account specified by pk # if all accounts will use self.queryset
+
+    self.pagination_class.page_size = 5
+    transactions = Transaction.objects.filter(account=account)
+    page = self.paginate_queryset(transactions)
+
+    if page is not None:
+        serializer = TransactionSerializer(page, many=True)
+        return self.get_paginated_response(serializer.data)
+    
+    serializer = TransactionSerializer(transactions, many=True)
+    return Response(serializer.data)
+
+  @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
+  def transfers(self, request, pk=None):
+    account = self.get_object() # Get the account specified by pk # if all accounts will use self.queryset
+    transfers = Transfer.objects.filter(sender=account) | Transfer.objects.filter(receiver=account)
     transfers = transfers.distinct()
     serializer = TransferSerializer(transfers, many=True)
     return Response(serializer.data)
-  
-  def post(self, request):
-    serializer = TransferSerializer(data=request.data)
-    if serializer.is_valid():
-      serializer.save()
-      return Response(serializer.data, status=status.HTTP_201_CREATED)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-  
