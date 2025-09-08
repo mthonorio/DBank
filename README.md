@@ -13,7 +13,7 @@ Sistema bancário simples desenvolvido em Django e Django REST Framework.
 1. Clone o repositório:
 
    ```bash
-   git clone <URL_DO_REPOSITORIO>
+   git clone https://github.com/mthonorio/DBank.git
    cd DBank/DBank
    ```
 
@@ -48,6 +48,10 @@ Sistema bancário simples desenvolvido em Django e Django REST Framework.
    ```bash
    python manage.py runserver
    ```
+
+## Funcionamento
+
+![Arquitetura do sistema](assets/architecture.jpg)
 
 ## Endpoints principais
 
