@@ -1,6 +1,5 @@
 django>=4.2
 djangorestframework
-djangorestframework-authtoken
 django-filter
 requests
 jsonpath
