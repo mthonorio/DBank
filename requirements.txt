@@ -4,3 +4,4 @@ django-filter
 requests
 jsonpath
 pytest
+python-dotenv
